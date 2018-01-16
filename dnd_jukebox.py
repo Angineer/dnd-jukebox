@@ -14,56 +14,71 @@ import sys
 import os
 from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication, 
     QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
-    QVBoxLayout, QHBoxLayout, QFrame)
+    QVBoxLayout, QHBoxLayout, QFrame, QMainWindow,
+    QAction, qApp, QApplication)
+from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPolygon
 from PyQt5 import QtMultimedia, QtCore
+from PyQt5.QtCore import QObject, Qt, pyqtSignal
+
+from PyQt5.QtCore import QPoint, Qt, QTime, QTimer
+from PyQt5.QtGui import QColor, QPainter, QPolygon
+from PyQt5.QtWidgets import QApplication, QWidget
 
 class Playlist(object):
 
-    def __init__(self, parent, url, title):
+    def __init__(self, parent, url):
         self.now_playing = QLabel(parent)
         self.now_playing.setMaximumSize(150, 22)
-        self.now_playing.setText(title)
-        self.playlist = [url]
+
+        if url is not None:
+            title = os.path.split(url)[-1]
+
+            self.now_playing.setText(title)
+            self.playlist = [(url, title)]
+
+        else:
+            self.playlist = []
 
     def clear(self):
         ''' Clear the playlist '''
-        pass
+        self.playlist = []
+        self.now_playing.setText("")
     
     def add(self, url):
         ''' Add a song to the playlist '''
         pass
 
-class Mood(object):
-    ''' A Mood object
+class Mood(QWidget):
+    ''' A Mood object '''
 
-    I'd like to make this a QWidget, but I'm not sure how at
-    this point
-    '''
-
-    def __init__(self, parent, label, url):
+    def __init__(self, label, url=None):
         ''' Input arguments:
 
-            parent: parent QWidget object
             label: string, label for this mood
             url: url of the first audio file in the playlist
         '''
+        super().__init__()
 
-        # Parse out url
-        title = os.path.split(url)[-1]
+        self.label = label
+        self.setMinimumSize(150, 50)
+        
+        self.playlist = Playlist(self, url)
+        
+        self.initUI()
+        
+    def initUI(self):
 
         self.top_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
 
-        self.playlist = Playlist(parent, url, title)
-
-        self.play_button = QPushButton(label, parent)
+        self.play_button = QPushButton(self.label, self)
         self.play_button.clicked.connect(self.play)
 
-        self.edit_button = QPushButton("🛠", parent)
+        self.edit_button = QPushButton("🛠", self)
         self.edit_button.setMaximumSize(22, 22)
         self.edit_button.clicked.connect(self.edit)
 
-        self.restart_button = QPushButton("↩", parent)
+        self.restart_button = QPushButton("↩", self)
         self.restart_button.setMaximumSize(22, 22)
         self.restart_button.clicked.connect(self.restart)
 
@@ -74,33 +89,61 @@ class Mood(object):
 
         self.top_layout.addLayout(self.button_layout)
         self.top_layout.addWidget(self.playlist.now_playing)
+        self.top_layout.addStretch(1)
+
+        self.setLayout(self.top_layout)
 
     def play(self):
         pass
 
     def edit(self):
+        self.playlist.clear()
         pass
 
     def restart(self):
         pass    
 
-class Jukebox(QWidget):
+class Jukebox(QMainWindow):
     
     def __init__(self):
         super().__init__()
+
+        # Get default location
+        home = os.path.expanduser("~")
 
         # Set up audio player
 
         # Start with default mood
         self.moods = []
-        self.moods.append(Mood(self, "Adventure!", "Takin' it easy.wav"));
+        self.moods.append(Mood("Adventure!", "Test"));
         
         self.initUI()
         
     def initUI(self):
 
         # Top level layout
+        self.main_widget = QWidget()
         self.layout = QVBoxLayout()
+
+        # Menus
+        load_act = QAction('Load', self)
+        load_act.triggered.connect(self.load_settings)
+        save_act = QAction('Save', self)
+        save_act.triggered.connect(self.save_settings)
+        exit_act = QAction('Quit', self)
+        exit_act.triggered.connect(qApp.quit)
+
+        pref_act = QAction('Settings', self)
+        pref_act.triggered.connect(self.set_settings)
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('File')
+        fileMenu.addAction(load_act)
+        fileMenu.addAction(save_act)
+        fileMenu.addAction(exit_act)
+
+        pref_menu = menubar.addMenu('Preferences')
+        pref_menu.addAction(pref_act)
 
         # Button to add new moods
         self.add_btn = QPushButton('Add Mood', self)
@@ -117,14 +160,16 @@ class Jukebox(QWidget):
 
         # Grid for holding moods
         self.mood_box = QGridLayout()
-        self.mood_box.addLayout(self.moods[0].top_layout, 1, 1, 1, 1)
+        self.mood_box.addWidget(self.moods[0], 1, 1, 1, 1)
 
         # Combine layouts
         self.layout.addLayout(self.add_box)
         self.layout.addWidget(h_line)
         self.layout.addLayout(self.mood_box)
         self.layout.addStretch(1)
-        self.setLayout(self.layout)
+
+        self.main_widget.setLayout(self.layout)
+        self.setCentralWidget(self.main_widget)
         
         # Set window properties
         self.setGeometry(300, 300, 640, 480)
@@ -140,14 +185,21 @@ class Jukebox(QWidget):
             new_url = QFileDialog.getOpenFileName(self, 'Open file', '/home/Dropbox/Projects/Python/DNDMusic/')
 
             if new_url[0]:
-                self.moods.append(Mood(self, new_label, new_url[0]))
+                self.moods.append(Mood(new_label, new_url[0]))
 
-                row = (len(self.moods) - 1) % 8 + 1
-                col = (len(self.moods) - 1) // 8 + 1
-                print(row, col)
+                row = (len(self.moods) - 1) % 6 + 1
+                col = (len(self.moods) - 1) // 6 + 1
 
-                self.mood_box.addLayout(self.moods[-1].top_layout, row, col, 1, 1)
-                
+                self.mood_box.addWidget(self.moods[-1], row, col, 1, 1)
+
+    def save_settings(self):
+        pass
+
+    def load_settings(self):
+        pass
+
+    def set_settings(self):
+        pass
 
     '''
     def closeEvent(self, event):
