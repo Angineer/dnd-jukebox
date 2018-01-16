@@ -142,7 +142,11 @@ class Jukebox(QWidget):
             if new_url[0]:
                 self.moods.append(Mood(self, new_label, new_url[0]))
 
-                self.mood_box.addLayout(self.moods[-1].top_layout, len(self.moods), 1, 1, 1)
+                row = (len(self.moods) - 1) % 8 + 1
+                col = (len(self.moods) - 1) // 8 + 1
+                print(row, col)
+
+                self.mood_box.addLayout(self.moods[-1].top_layout, row, col, 1, 1)
                 
 
     '''
