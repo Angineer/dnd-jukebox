@@ -11,12 +11,18 @@ Author: Andy Tracy <adtme11@gmail.com>
 """
 
 import sys
+import os
 from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication, 
-    QPushButton, QLineEdit, QFileDialog)
+    QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
+    QVBoxLayout, QHBoxLayout, QFrame)
+from PyQt5 import QtMultimedia, QtCore
 
 class Playlist(object):
 
-    def __init__(self, url):
+    def __init__(self, parent, url, title):
+        self.now_playing = QLabel(parent)
+        self.now_playing.setMaximumSize(150, 22)
+        self.now_playing.setText(title)
         self.playlist = [url]
 
     def clear(self):
@@ -28,6 +34,11 @@ class Playlist(object):
         pass
 
 class Mood(object):
+    ''' A Mood object
+
+    I'd like to make this a QWidget, but I'm not sure how at
+    this point
+    '''
 
     def __init__(self, parent, label, url):
         ''' Input arguments:
@@ -37,37 +48,83 @@ class Mood(object):
             url: url of the first audio file in the playlist
         '''
 
-        self.playlist = Playlist(url)
+        # Parse out url
+        title = os.path.split(url)[-1]
+
+        self.top_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
+
+        self.playlist = Playlist(parent, url, title)
+
         self.play_button = QPushButton(label, parent)
-        self.play_button.clicked.connect(self.edit)
+        self.play_button.clicked.connect(self.play)
+
+        self.edit_button = QPushButton("🛠", parent)
+        self.edit_button.setMaximumSize(22, 22)
+        self.edit_button.clicked.connect(self.edit)
+
+        self.restart_button = QPushButton("↩", parent)
+        self.restart_button.setMaximumSize(22, 22)
+        self.restart_button.clicked.connect(self.restart)
+
+        self.button_layout.addWidget(self.play_button)
+        self.button_layout.addWidget(self.edit_button)
+        self.button_layout.addWidget(self.restart_button)
+        self.button_layout.addStretch(1)
+
+        self.top_layout.addLayout(self.button_layout)
+        self.top_layout.addWidget(self.playlist.now_playing)
+
+    def play(self):
+        pass
 
     def edit(self):
         pass
 
-    def position(self, x, y):
-        self.play_button.move(x, y)
+    def restart(self):
+        pass    
 
 class Jukebox(QWidget):
     
     def __init__(self):
         super().__init__()
 
+        # Set up audio player
+
         # Start with default mood
         self.moods = []
-        self.moods.append(Mood(self, "Adventure!", ""));
+        self.moods.append(Mood(self, "Adventure!", "Takin' it easy.wav"));
         
         self.initUI()
         
-        
     def initUI(self):
+
+        # Top level layout
+        self.layout = QVBoxLayout()
 
         # Button to add new moods
         self.add_btn = QPushButton('Add Mood', self)
-        self.add_btn.move(20, 10)
-        self.add_btn.clicked.connect(self.addMood)
+        self.add_btn.clicked.connect(self.add_mood)
 
-        # Default mood
-        self.moods[0].position(20, 60)
+        self.add_box = QHBoxLayout()
+        self.add_box.addWidget(self.add_btn)
+        self.add_box.addStretch(1)
+
+        # Horizontal Line
+        h_line = QFrame()
+        h_line.setFrameShape(QFrame.HLine)
+        h_line.setFrameShadow(QFrame.Sunken)
+
+        # Grid for holding moods
+        self.mood_box = QGridLayout()
+        self.mood_box.addLayout(self.moods[0].top_layout, 1, 1, 1, 1)
+
+        # Combine layouts
+        self.layout.addLayout(self.add_box)
+        self.layout.addWidget(h_line)
+        self.layout.addLayout(self.mood_box)
+        self.layout.addStretch(1)
+        self.setLayout(self.layout)
         
         # Set window properties
         self.setGeometry(300, 300, 640, 480)
@@ -75,13 +132,20 @@ class Jukebox(QWidget):
 
         self.show()
 
-    def addMood(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open file', '/home/Dropbox/Projects/Python/DNDMusic/')
+    def add_mood(self):
+        # Get label
+        new_label, ok = QInputDialog.getText(self, 'Mood Label', 'Enter the label for your new mood:')
+        
+        if ok:
+            new_url = QFileDialog.getOpenFileName(self, 'Open file', '/home/Dropbox/Projects/Python/DNDMusic/')
 
-        if fname[0]:
-            print("Success")
-        
-        
+            if new_url[0]:
+                self.moods.append(Mood(self, new_label, new_url[0]))
+
+                self.mood_box.addLayout(self.moods[-1].top_layout, len(self.moods), 1, 1, 1)
+                
+
+    '''
     def closeEvent(self, event):
         
         reply = QMessageBox.question(self, 'Message',
@@ -92,6 +156,7 @@ class Jukebox(QWidget):
             event.accept()
         else:
             event.ignore()
+    '''
 
 if __name__ == '__main__':
     
