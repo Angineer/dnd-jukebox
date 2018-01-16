@@ -15,7 +15,7 @@ import os
 from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication, 
     QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
     QVBoxLayout, QHBoxLayout, QFrame, QMainWindow,
-    QAction, qApp, QApplication)
+    QAction, qApp, QApplication, QCheckBox)
 from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPolygon
 from PyQt5 import QtMultimedia, QtCore
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
@@ -30,23 +30,29 @@ class Playlist(object):
         self.now_playing = QLabel(parent)
         self.now_playing.setMaximumSize(150, 22)
 
+        self.now_index = 0
+        self.playlist = []
+
         if url is not None:
-            title = os.path.split(url)[-1]
-
+            title = self.add(url)
             self.now_playing.setText(title)
-            self.playlist = [(url, title)]
 
-        else:
-            self.playlist = []
+            self.now_index = 1
 
     def clear(self):
         ''' Clear the playlist '''
         self.playlist = []
         self.now_playing.setText("")
+        self.now_index = 0
     
     def add(self, url):
         ''' Add a song to the playlist '''
-        pass
+        title = ""
+        if url is not None:
+            title = os.path.split(url)[-1]
+            self.playlist.append((url, title))
+
+        return title
 
 class Mood(QWidget):
     ''' A Mood object '''
@@ -97,11 +103,40 @@ class Mood(QWidget):
         pass
 
     def edit(self):
-        self.playlist.clear()
         pass
 
     def restart(self):
-        pass    
+        pass
+
+class SettingsDialog(QMainWindow):
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Top level layout
+        self.main_widget = QWidget()
+        self.layout = QVBoxLayout()
+
+        # Add settings
+        self.fade = QCheckBox("Fade between tracks", self)
+        self.layout.addWidget(self.fade)
+        self.layout.addStretch(1)
+
+        self.save = QPushButton("Save", self)
+        self.save.clicked.connect(self.save_settings)
+        self.layout.addWidget(self.save)
+
+        self.main_widget.setLayout(self.layout)
+        self.setCentralWidget(self.main_widget)
+        
+        # Set window properties
+        self.setGeometry(300, 300, 320, 240)
+        self.setWindowTitle('Settings')
+
+        self.show()
+
+    def save_settings(self):
+        print(self.fade.isChecked())
 
 class Jukebox(QMainWindow):
     
@@ -193,13 +228,13 @@ class Jukebox(QMainWindow):
                 self.mood_box.addWidget(self.moods[-1], row, col, 1, 1)
 
     def save_settings(self):
-        pass
+        print("Save")
 
     def load_settings(self):
-        pass
+        print("Load")
 
     def set_settings(self):
-        pass
+        settings_window = SettingsDialog(self)
 
     '''
     def closeEvent(self, event):
