@@ -280,11 +280,12 @@ class SettingsDialog(QMainWindow):
 
         # Add settings
         self.fade = QCheckBox("Fade between tracks", self)
+        self.fade.setChecked(jukebox.settings["fade"])
         self.layout.addWidget(self.fade)
         self.layout.addStretch(1)
 
         self.save = QPushButton("Save", self)
-        self.save.clicked.connect(self.save_settings)
+        self.save.clicked.connect(lambda: self.save_settings(jukebox))
         self.layout.addWidget(self.save)
 
         self.main_widget.setLayout(self.layout)
@@ -296,8 +297,8 @@ class SettingsDialog(QMainWindow):
 
         self.show()
 
-    def save_settings(self):
-        print(self.fade.isChecked())
+    def save_settings(self, jukebox):
+        jukebox.settings["fade"] = self.fade.isChecked()
 
 class Jukebox(QMainWindow):
     
@@ -306,7 +307,8 @@ class Jukebox(QMainWindow):
 
         # Default settings
         self.settings = {
-            "fade": True
+            "fade": True,
+            "last_dir": os.path.expanduser("~")
         }
 
         # Set up audio player
@@ -396,9 +398,11 @@ class Jukebox(QMainWindow):
 
     def save_settings(self):
         ''' Saves moods and user settings '''
-        new_url, type = QFileDialog.getSaveFileName(self, 'Save file', os.path.expanduser("~"), "*.dnd")
+        new_url, type = QFileDialog.getSaveFileName(self, 'Save file', self.settings["last_dir"], "*.dnd")
 
         if new_url:
+            self.settings["last_dir"] = os.path.split(new_url)[0]
+
             if ".dnd" not in new_url:
                 full_url = new_url + ".dnd"
             else:
@@ -414,9 +418,11 @@ class Jukebox(QMainWindow):
 
     def load_settings(self):
         ''' Loads moods and user settings '''
-        new_url, type = QFileDialog.getOpenFileName(self, 'Open file', os.path.expanduser("~"), "*.dnd")
+        new_url, type = QFileDialog.getOpenFileName(self, 'Open file', self.settings["last_dir"], "*.dnd")
 
         if new_url:
+            self.settings["last_dir"] = os.path.split(new_url)[0]
+            
             # Get rid of existing moods
             for i in reversed(range(self.mood_box.count())): 
                 self.mood_box.itemAt(i).widget().setParent(None)
