@@ -7,11 +7,14 @@ A little program for queuing up and playing audio files from your computer
 using semantic labels (that the user assigns). Borrows some ideas from the
 PyQT tutorials at http://zetcode.com/gui/pyqt5/.
 
+Taskbar icon from https://icons8.com/
+
 Author: Andy Tracy <adtme11@gmail.com>
 """
 
 import sys
 import os
+import pickle
 from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication, 
     QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
     QVBoxLayout, QHBoxLayout, QFrame, QMainWindow,
@@ -51,6 +54,9 @@ class Playlist(object):
         if url is not None:
             title = os.path.split(url)[-1]
             self.playlist.append((url, title))
+
+            if self.now_index == -1:
+                self.restart()
 
         return title
 
@@ -265,7 +271,7 @@ class Mood(QWidget):
 
 class SettingsDialog(QMainWindow):
     
-    def __init__(self, parent=None):
+    def __init__(self, jukebox, parent=None):
         super().__init__(parent)
 
         # Top level layout
@@ -298,8 +304,10 @@ class Jukebox(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Get default location
-        home = os.path.expanduser("~")
+        # Default settings
+        self.settings = {
+            "fade": True
+        }
 
         # Set up audio player
 
@@ -383,14 +391,60 @@ class Jukebox(QMainWindow):
 
                 self.mood_box.addWidget(self.moods[-1], row, col, 1, 1)
 
+    def remove_mood(self, mood):
+        pass
+
     def save_settings(self):
-        print("Save")
+        ''' Saves moods and user settings '''
+        new_url, type = QFileDialog.getSaveFileName(self, 'Save file', os.path.expanduser("~"), "*.dnd")
+
+        if new_url:
+            if ".dnd" not in new_url:
+                full_url = new_url + ".dnd"
+            else:
+                full_url = new_url
+
+            moods_to_pickle = []
+
+            for mood in self.moods:
+                moods_to_pickle.append((mood.label, mood.playlist.playlist))
+
+            with open(full_url, 'wb+') as save_file:
+                pickle.dump((moods_to_pickle, self.settings), save_file)
 
     def load_settings(self):
-        print("Load")
+        ''' Loads moods and user settings '''
+        new_url, type = QFileDialog.getOpenFileName(self, 'Open file', os.path.expanduser("~"), "*.dnd")
+
+        if new_url:
+            # Get rid of existing moods
+            for i in reversed(range(self.mood_box.count())): 
+                self.mood_box.itemAt(i).widget().setParent(None)
+            self.moods = []
+
+            # Load saved moods
+            with open(new_url, 'rb') as save_file:
+                settings = pickle.load(save_file)
+
+            for mood in settings[0]:
+                label = mood[0]
+                playlist = mood[1]
+
+                new_mood = Mood(label)
+                for track in playlist:
+                    new_mood.playlist.add(track[0])
+
+                self.moods.append(new_mood)
+
+                row = (len(self.moods) - 1) % 6 + 1
+                col = (len(self.moods) - 1) // 6 + 1
+
+                self.mood_box.addWidget(self.moods[-1], row, col, 1, 1)
+
+            self.settings = settings[1]
 
     def set_settings(self):
-        settings_window = SettingsDialog(self)
+        settings_window = SettingsDialog(self, self)
 
     '''
     def closeEvent(self, event):
