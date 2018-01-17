@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 """
 D&D Jukebox
@@ -19,12 +20,10 @@ from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication,
     QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
     QVBoxLayout, QHBoxLayout, QFrame, QMainWindow,
     QAction, qApp, QApplication, QCheckBox, QLineEdit)
-from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPolygon, QIcon
-from PyQt5 import QtMultimedia, QtCore
-from PyQt5.QtCore import QObject, Qt, pyqtSignal
+from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer, QAudio, QAudioDeviceInfo, QSound, QAudioFormat, QAudioOutput
+from PyQt5.QtCore import QObject, Qt, pyqtSignal, QFile
+from PyQt5.QtGui import QIcon
 
-from PyQt5.QtCore import QPoint, Qt, QTime, QTimer
-from PyQt5.QtGui import QColor, QPainter, QPolygon
 from PyQt5.QtWidgets import QApplication, QWidget
 
 class Playlist(object):
@@ -253,15 +252,15 @@ class Mood(QWidget):
         self.setLayout(self.top_layout)
 
     def play(self):
-        last_idx = self.playlist.now_index
+        curr_idx = self.playlist.now_index
+        curr_url = self.playlist.playlist[curr_idx][0]
 
-        if last_idx >= 0:
-            next_idx = last_idx + 1
-            if next_idx == len(self.playlist.playlist):
-                next_idx = 0
+        print(curr_url)
 
-            self.playlist.now_index = next_idx
-            self.playlist.now_playing.setText(self.playlist.playlist[next_idx][1])
+        if ".wav" in curr_url:
+            QSound.play(curr_url)
+        else:
+            print("Incompatible file type")
 
     def edit(self):
         diag = EditDialog(self, self)
@@ -312,10 +311,32 @@ class Jukebox(QMainWindow):
         }
 
         # Set up audio player
+        # I couldn't get this working with either the QAudioOutput (configuration
+        # issues) or the QMediaPlayer (plugin issues), so I just did it with QSound
+        # on the individual moods
+        
+        # audio_file = QFile()
+        # audio_file.setFileName("/home/andy/Dropbox/Projects/Python/DNDMusic/sample.wav")
+        
+        # audio_format = QAudioFormat();
+        # audio_format.setSampleRate(44100);
+        # audio_format.setChannelCount(1);
+        # audio_format.setSampleSize(16);
+        # audio_format.setCodec("audio/pcm");
+        # audio_format.setByteOrder(QAudioFormat.LittleEndian);
+        # audio_format.setSampleType(QAudioFormat.UnSignedInt);
 
-        # Start with default mood
+        # For Linux, need to customize device
+        # device_info = QAudioDeviceInfo(QAudioDeviceInfo.defaultOutputDevice())
+
+        # Create output
+        # audio = QAudioOutput(device_info, audio_format)
+        # audio.setVolume(100)
+        # audio.start(audio_file)
+
+        # Start with no moods
         self.moods = []
-        self.moods.append(Mood("Adventure!", "Test"));
+        self.moods.append(Mood("Adventuring", "Test.wav"))
         
         self.initUI()
         
