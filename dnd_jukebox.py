@@ -15,8 +15,8 @@ import os
 from PyQt5.QtWidgets import (QWidget, QMessageBox, QApplication, 
     QPushButton, QInputDialog, QFileDialog, QLabel, QGridLayout,
     QVBoxLayout, QHBoxLayout, QFrame, QMainWindow,
-    QAction, qApp, QApplication, QCheckBox)
-from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPolygon
+    QAction, qApp, QApplication, QCheckBox, QLineEdit)
+from PyQt5.QtGui import QPainter, QFont, QColor, QPen, QPolygon, QIcon
 from PyQt5 import QtMultimedia, QtCore
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 
@@ -30,14 +30,14 @@ class Playlist(object):
         self.now_playing = QLabel(parent)
         self.now_playing.setMaximumSize(150, 22)
 
-        self.now_index = 0
+        self.now_index = -1
         self.playlist = []
 
         if url is not None:
             title = self.add(url)
             self.now_playing.setText(title)
 
-            self.now_index = 1
+            self.now_index = 0
 
     def clear(self):
         ''' Clear the playlist '''
@@ -53,6 +53,138 @@ class Playlist(object):
             self.playlist.append((url, title))
 
         return title
+
+    def remove(self, idx):
+        ''' Remove one track from the playlist '''
+        pass
+
+    def restart(self):
+        if self.playlist:
+            self.now_index = 0
+            self.now_playing.setText(self.playlist[0][1])
+        else:
+            self.now_index = -1
+            self.now_playing.setText("")
+
+class EditDialog(QMainWindow):
+    
+    def __init__(self, mood, parent=None):
+        super().__init__(parent)
+
+        # Top level layout
+        self.main_widget = QWidget()
+        self.layout = QVBoxLayout()
+
+        # Tracks have a separate layout
+        self.new_tracks = []
+        self.track_layout = QVBoxLayout()
+
+        for track in mood.playlist.playlist:
+            url = track[0]
+            title = track[1]
+
+            self.add_track(url, title)
+
+        # Add parameters
+        self.update_box = QLineEdit(mood.label, self)
+        self.layout.addWidget(self.update_box)
+
+        #self.layout.addWidget(QLabel("Tracks:", self))
+
+        self.layout.addLayout(self.track_layout)
+
+        add_button = QPushButton("+", self)
+        add_button.setMaximumSize(22, 22)
+        add_button.clicked.connect(self.pick_track)
+        self.layout.addWidget(add_button)
+
+        self.layout.addStretch(1)
+
+        save_button = QPushButton("Save", self)
+        save_button.clicked.connect(lambda: self.save_settings(mood))
+        self.layout.addWidget(save_button)
+
+        self.main_widget.setLayout(self.layout)
+        self.setCentralWidget(self.main_widget)
+        
+        # Set window properties
+        self.setGeometry(300, 300, 320, 240)
+        self.setWindowTitle('Settings')
+
+        self.show()
+
+    def pick_track(self):
+        url = QFileDialog.getOpenFileName(self, 'Add Track')
+
+        if url[0]:
+            title = os.path.split(url[0])[-1]
+            self.add_track(url[0], title)
+
+    def add_track(self, url, title):
+        idx = len(self.new_tracks)
+
+        label = QLabel(title, self)
+        label.setMinimumSize(100, 22)
+        remove = QPushButton("-", self)
+        remove.setMaximumSize(22, 22)
+        mv_up = QPushButton("▲", self)
+        mv_up.setMaximumSize(22, 22)
+        mv_down = QPushButton("▼", self)
+        mv_down.setMaximumSize(22, 22)
+
+        single_track = QHBoxLayout()
+
+        single_track.addWidget(label)
+        single_track.addWidget(remove)
+        single_track.addWidget(mv_up)
+        single_track.addWidget(mv_down)
+
+        list_item = (url, title, single_track)
+        remove.clicked.connect(lambda: self.remove_track(list_item))
+        mv_up.clicked.connect(lambda: self.up_track(list_item))
+        mv_down.clicked.connect(lambda: self.down_track(list_item))
+
+        self.new_tracks.append(list_item)
+        self.track_layout.addLayout(single_track)
+
+    def remove_track(self, list_item):
+        url, title, single_track = list_item
+        self.track_layout.removeItem(single_track)
+
+        # Remove all the widgets
+        for i in reversed(range(single_track.count())): 
+            single_track.itemAt(i).widget().setParent(None)
+
+        # Delete the single track layout
+        single_track.deleteLater()
+        
+        # Remove from list
+        try:
+            self.new_tracks.remove(list_item)
+        except ValueError:
+            pass
+
+    def up_track(self, list_item):
+        pass
+
+    def down_track(self, list_item):
+        pass
+
+    def save_settings(self, mood):
+        print(self.new_tracks)
+
+        # Update label
+        new_label = self.update_box.text()
+        if new_label != mood.label:
+            mood.label = new_label
+            mood.play_button.setText(mood.label)
+
+        # Update playlist with new tracks
+        mood.playlist.clear()
+        for track in self.new_tracks:
+            mood.playlist.add(track[0])
+
+        mood.playlist.restart()
 
 class Mood(QWidget):
     ''' A Mood object '''
@@ -103,7 +235,7 @@ class Mood(QWidget):
         pass
 
     def edit(self):
-        pass
+        diag = EditDialog(self, self)
 
     def restart(self):
         pass
@@ -208,6 +340,7 @@ class Jukebox(QMainWindow):
         
         # Set window properties
         self.setGeometry(300, 300, 640, 480)
+        self.setWindowIcon(QIcon('icon.png'))
         self.setWindowTitle('D&D Jukebox')
 
         self.show()
