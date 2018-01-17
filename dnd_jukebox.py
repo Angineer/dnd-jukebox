@@ -108,7 +108,7 @@ class EditDialog(QMainWindow):
         self.setCentralWidget(self.main_widget)
         
         # Set window properties
-        self.setGeometry(300, 300, 320, 240)
+        self.setGeometry(400, 400, 320, 240)
         self.setWindowTitle('Settings')
 
         self.show()
@@ -138,6 +138,7 @@ class EditDialog(QMainWindow):
         single_track.addWidget(remove)
         single_track.addWidget(mv_up)
         single_track.addWidget(mv_down)
+        single_track.setSpacing(5)
 
         list_item = (url, title, single_track)
         remove.clicked.connect(lambda: self.remove_track(list_item))
@@ -165,14 +166,28 @@ class EditDialog(QMainWindow):
             pass
 
     def up_track(self, list_item):
-        pass
+        old_idx = self.new_tracks.index(list_item)
+        if old_idx > 0:
+            new_idx = old_idx - 1
+            self.new_tracks.remove(list_item)
+            self.new_tracks.insert(new_idx, list_item)
+
+            _, _, single_track = list_item
+            self.track_layout.removeItem(single_track)
+            self.track_layout.insertItem(new_idx, single_track)
 
     def down_track(self, list_item):
-        pass
+        old_idx = self.new_tracks.index(list_item)
+        if old_idx < len(self.new_tracks) - 1:
+            new_idx = old_idx + 1
+            self.new_tracks.remove(list_item)
+            self.new_tracks.insert(new_idx, list_item)
+
+            _, _, single_track = list_item
+            self.track_layout.removeItem(single_track)
+            self.track_layout.insertItem(new_idx, single_track)
 
     def save_settings(self, mood):
-        print(self.new_tracks)
-
         # Update label
         new_label = self.update_box.text()
         if new_label != mood.label:
@@ -232,13 +247,21 @@ class Mood(QWidget):
         self.setLayout(self.top_layout)
 
     def play(self):
-        pass
+        last_idx = self.playlist.now_index
+
+        if last_idx >= 0:
+            next_idx = last_idx + 1
+            if next_idx == len(self.playlist.playlist):
+                next_idx = 0
+
+            self.playlist.now_index = next_idx
+            self.playlist.now_playing.setText(self.playlist.playlist[next_idx][1])
 
     def edit(self):
         diag = EditDialog(self, self)
 
     def restart(self):
-        pass
+        self.playlist.restart()
 
 class SettingsDialog(QMainWindow):
     
