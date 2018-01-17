@@ -255,8 +255,6 @@ class Mood(QWidget):
         curr_idx = self.playlist.now_index
         curr_url = self.playlist.playlist[curr_idx][0]
 
-        print(curr_url)
-
         if ".wav" in curr_url:
             QSound.play(curr_url)
         else:
